@@ -1,0 +1,64 @@
+# newsserver 配置文件(参照 stock_ai 配置风格, 所有项均可被环境变量覆盖: NEWS server 前缀 + 下划线)
+health-check-path: healthz
+health-check-address: 0.0.0.0:5060
+
+mysql:
+  host: 127.0.0.1
+  port: 3306
+  username: root
+  password: "your_secure_password"
+  database: news_ai_agent
+  charset: utf8mb4
+  max-idle-conn: 10
+  max-open-conn: 50
+  log-level: 4
+  migrate: true           # 启动时自动建表(生产可关闭, 使用 configs/schema/news_ai_agent.sql)
+
+# 大模型直连配置(智谱 GLM, OpenAI 兼容协议)
+llm:
+  base-url: https://open.bigmodel.cn/api/paas/v4
+  api-key: ""   # 也可用环境变量 LLM_API_KEY 注入(优先取配置文件)
+  model: glm-4.5-flash       # glm-5.3 账户余额不足(1113), 暂用免费的 4.5-flash; 充值后改回 glm-5.3 即可
+  timeout: 120s
+  temperature: 0.7
+  max-tokens: 16384
+
+# 新闻检索与正文抓取
+news:
+  search-providers:       # zhipu=智谱联网搜索(推荐, 大陆网络可用), google/bing=RSS(境内不可达, 备用)
+    - zhipu
+  search-model: glm-4-flash   # zhipu 渠道检索用的轻量模型(与文章生成模型 llm.model 相互独立)
+  max-articles-per-task: 12
+  fetch-workers: 4
+  fetch-timeout: 15s
+  user-agent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36"
+  topics:                 # 新闻领域关键词(领域: 关键词列表)
+    livelihood: ["民生保障", "就业", "教育医疗"]
+    economy: ["宏观经济", "金融市场", "产业经济"]
+    ai: ["AI大模型", "人工智能", "OpenAI"]
+    tech: ["硬科技", "半导体", "智能硬件"]
+
+# 微信公众号(真实模式: 自动创建草稿, 人工确认发布; 需在公众号后台配置服务器 IP 白名单)
+wechat:
+  enabled: true
+  app-id: ""
+  app-secret: ""
+  base-url: https://api.weixin.qq.com
+  default-cover-path: ./configs/assets/default_cover.jpg
+  timeout: 30s
+
+# 任务调度
+task:
+  max-retries: 3
+  retry-interval-second: 30
+  scan-interval-second: 30
+  auto-create: true       # 按领域自动创建任务
+  auto-create-interval-hour: 6
+
+log:
+  level: debug
+  director: log/runtime
+
+serving:
+  bind-address: 0.0.0.0
+  bind-port: 5061
